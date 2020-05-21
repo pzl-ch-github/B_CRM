@@ -1,0 +1,288 @@
+<!-- 对应前端：栏目管理 -->
+<div class="category">
+  <!-- 树形结构 -->
+  <div class="category-tree">
+    <!-- ztree树形结构 -->
+    <ul id="category-tree" class="ztree"></ul>
+  </div>
+  <!-- 表格内容 -->
+  <div class="category-content">
+    <div class="category-option"> 
+      <button class="btn btn-primary" id="addBtn">新增</button>
+      <button class="btn btn-primary" id="batchBtn">批量删除</button>
+    </div>
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>编号</th>
+          <th>栏目名称</th>
+          <th>栏目描述</th>
+          <th>父栏目</th>
+          <th style="text-align: center;">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+      </tbody>
+    </table>
+  </div>
+  <!-- 模态框 Modal -->
+  <div class="modal fade" id="categoryModal" tabindex="-1" role="dialog" aria-labelledby="categoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="categoryModalLabel">新增栏目</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form>
+            <div class="form-group">
+              <label for="category-name">栏目名称</label>
+              <input type="email" class="form-control" id="category-name" aria-describedby="emailHelp">
+            </div>
+            <div class="form-group">
+              <label for="category-parent">父栏目</label>
+              <select name="" id="category-parent" class="form-control"> 
+
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="category-comment">栏目描述</label>
+              <textarea name="" id="category-comment" cols="10" rows="5" class="form-control"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+          <button type="button" class="btn btn-primary" id="saveBtn">确定</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var allData;
+  var saveId;
+  findAllCategory();
+  //  查询所有栏目，显示到表格
+  function findAllCategory(){
+    myAjax('/manager/category/findAllCategory','get',{},function(res){
+      allData = res.data;
+      // 清空表格数据
+      $('tbody').empty();
+      // console.log(res.data)
+      // 1.将数据遍历到表格中
+      res.data.forEach(function(item){
+        var newTr = $(`
+          <tr>
+            <td><input type="checkbox" value="`+item.id+`"></td>
+            <td>`+item.name+`</td>
+            <td>`+item.comment+`</td>
+            <td>`+(item.parent ? item.parent.name : '--')+`</td>
+            <td style="text-align:center;">
+              <span><i class="iconfont icon-shanchu category-delete" title="删除"></i></span>
+              <span><i class="iconfont icon-xiugai category-edit" title="修改"></i></span>
+            </td>
+          </tr>
+        `)
+        $('tbody').append(newTr)
+      })
+      // 2.将数据遍历到树形结构中
+      // var result = res.data.filter(function(item){
+      //   return item.parent
+      // })
+        // 过滤出父栏目id为空
+      var parents = res.data.filter(function(item){
+        return !item.parent;
+      })
+      // 过滤出父栏目id为当前id的栏目
+      parents.forEach(function(item){
+        item.children = res.data.filter(function(it){
+          if(it.parent){
+            return item.id==it.parent.id;
+          }
+        })
+      })
+      // 设置第一个默认展开
+      parents[0].open = true;
+      // 渲染数据
+      $.fn.zTree.init($("#category-tree"), {view:{showIcon:false}}, parents);
+
+      // 将数据遍历到下拉框
+      res.data.forEach(function(item){
+        var newOption = $(`
+          <option value="`+item.id+`">`+item.name+`</option>
+        `);
+        $('#category-parent').append(newOption);
+      })
+
+    })
+  }
+
+  // 新增按钮的事件
+  $('#addBtn').click(function(){
+    // 将进行修改操作时产生的saveId清空
+    saveId = null;
+    // 模态框名称
+    $('#categoryModalLabel').text('新增栏目');
+    $('#category-name').val('');
+    $('#category-comment').val('');
+    // 显示模态框
+    $('#categoryModal').modal('show');
+  })
+  
+  // 确定保存
+  $('#saveBtn').click(function(){
+    // 获取输入框中的值
+    var name = $('#category-name').val();
+    var parentId = $('#category-parent').val();
+    var comment = $('#category-comment').val();
+    // 判断栏目名称和描述是否填写
+    if(name && comment){
+      // 判断是 新增或者修改
+      var obj;
+      if(saveId){
+        // 封装参数
+        obj = {
+          id:saveId,
+          name:name,
+          comment:comment,
+          no:null,
+          parentId:parentId
+        };
+      }else{
+        // 封装参数
+        obj = {
+          name:name,
+          comment:comment,
+          no:null,
+          parentId:parentId
+        };
+      }
+      console.log('obj',obj);
+      // 前后台交互：发送数据
+      myAjax('/manager/category/saveOrUpdateCategory','post',obj,function(res){
+        // 关闭模态框
+        $('#categoryModal').modal('hide');
+        // 刷新表格
+        findAllCategory();
+      })
+    }
+  })
+
+  // 批量删除
+  $('#batchBtn').click(function(){
+    // 获取所有被勾选的栏目id
+    var arr = [];
+    Array.from($(':checkbox:checked')).forEach(function(item){
+      // console.log(item.value);
+      arr.push($(item).val());
+    })
+    // console.log(arr.toString());
+    // console.log(arr.join(','));
+    if(arr.length>0){
+      var result = confirm('是否确定删除所选数据?');
+      // 判断是否进行批量删除
+      if(result){
+        myAjax('/manager/category/batchDeleteCategory','post',{ids:arr.toString()},function(res){
+          if(res.status==200){
+            // 页面数据更新
+            findAllCategory();
+          }else{
+            alert('删除失败');
+            // 改变多选框的状态
+            $(':checkbox:checked').prop('checked',false);
+          }
+        })
+      }
+    }else{
+      alert('未选择数据');
+    }
+  })
+
+  // 修改 事件代理
+  $('.table').on('click','.category-edit',function(){
+    // 模态框名称
+    $('#categoryModalLabel').text('修改栏目');
+    // 获取点击的 id
+    saveId = $(this).closest('tr').find('[type=checkbox]').val();
+    // 弹出 修改模态框，并将数据显示在表单中
+    var editData = allData.filter(function(item){
+      // item 为每一个栏目
+      return item.id == saveId;
+    })[0];
+    $('#category-name').val(editData.name);
+    $('#category-comment').val(editData.comment);
+    $('#category-parent').val(editData.parent?editData.parent.id:'');
+    $('#categoryModal').modal('show');
+  })
+
+  // 删除 事件代理
+  $('.table').on('click','.category-delete',function(){
+    // 在点击时获取 id
+    var deleteId = $(this).closest('tr').find('[type=checkbox]').val();
+    // 确认删除，返回 true
+    var result = confirm('是否确认删除?');
+    if(result){
+      myAjax('/manager/category/deleteCategoryById','get',{id:deleteId},function(res){
+        if(res.status==200){
+          alert(res.message);
+          findAllCategory();
+        }else{
+          alert('删除失败');
+        }
+      })
+    }
+  })
+
+
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- zTree 的参数配置，深入使用请参考 API 文档（setting 配置详解）
+var setting = {};
+// zTree 的数据属性，深入使用请参考 API 文档（zTreeNode 节点数据详解）
+var zNodes = [
+  {
+    name:"test1",
+    open:true, 
+    children:[
+      {name:"test1_1"}, 
+      {name:"test1_2"}
+    ]
+  },
+  {
+    name:"test2", 
+    open:true, 
+    children:[
+      {name:"test2_1"}, 
+      {name:"test2_2"}
+    ]
+  }
+]; -->

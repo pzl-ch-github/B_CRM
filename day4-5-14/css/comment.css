@@ -1,0 +1,11 @@
+/* 清除样式 */
+.comment #myTab li{ 
+  list-style: none;
+}
+.comment{
+  height: 100%;
+}
+.comment #myTabContent{
+  height: 90%;
+  overflow: auto;
+}

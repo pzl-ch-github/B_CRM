@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>看点咨询登录页面</title>
+  <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/4.4.1/css/bootstrap.min.css" rel="stylesheet">
+  
+  <!-- 引入jQuery -->
+  <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+  <script>
+    //通过ajax向后台发送数据
+    // contentType取值:
+    // 1、application/x Www form-urlencoded( jQuery的ajax请求的默认方式)
+    // 参数:键值对key1=value1&key2=value2
+    // 2、application/json 并且调用JSON. stringify()方法
+    // 参数: json字符串 '{"key1":"value1", "key2":"value2"}'
+    //使用ajax向后台发送json格式的数据?
+
+    $(function(){
+      $('button').click(function(){
+        var username = $('#username').val();
+        var password = $('#password').val();
+        $.ajax({
+          url:'http://39.96.21.48:8099/manager/user/login',
+          method:'post',
+          data:JSON.stringify({
+            username:username,
+            password:password
+          }),
+          contentType:'application/json',
+          success:function(res){
+            console.log(res);
+            // 将token设置到浏览器中
+            localStorage.setItem('token',res.data.token);
+            // 从浏览器中获取token
+            var token = localStorage.getItem('token');
+            if(res.data.token){
+              // 页面跳转，即登陆成功
+              console.log(location.href);
+              location.href = 'file:///D:/2020WEB/kd/project/ME/day4-5-14/index.html';
+              // $('a').attr('href','./index.html');
+            }else{
+              alert('用户名或密码错误');
+            }
+          },
+          error:function(err){
+            console.log(err);
+          }
+        })
+      })
+    })
+  </script>
+
+</head>
+<body>
+  <!-- 登录功能 -->
+  <div class="login">
+    <div class="loginInner">
+      <h3>看点咨询登录</h3>
+      <div class="form-group">
+        <label for="username" style="font-size: 20px;color: turquoise;">用户名</label>
+        <input type="text" class="form-control" id="username" aria-describedby="emailHelp">
+      </div>
+      <div class="form-group">
+        <label for="password" style="font-size: 20px;color: turquoise;">密码</label>
+        <input type="password" class="form-control" id="password" aria-describedby="emailHelp">
+      </div>
+      <div class="form-group" style="text-align: center;">
+        <!-- <button class="btn btn-primary"><a style="text-decoration: none;font-size: 16px;color: black;" href="#">登录</a> </button> -->
+        <button class="btn btn-primary">登录</button>
+      </div>
+
+    </div>
+  </div>
+</body>
+<style>
+  html,body{
+    height: 100%;
+  }
+  .login{
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-image: url('./images/login.jpg');
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+  }
+  .loginInner{
+    width: 400px;
+    height: 300px;
+    background-color: rgba(57, 117, 95, 0.1);
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  .loginInner:hover{
+    box-shadow: 5px 5px 15px white;
+  }
+  .loginInner h3{
+    text-align: center;
+  }
+</style>
+</html>

@@ -1,0 +1,300 @@
+<div class="comment">
+  <ul class="nav nav-tabs" id="myTab" role="tablist">
+    <li class="nav-item">
+      <a class="nav-link active" id="home-tab" data-toggle="tab" href="#comment-set" role="tab" aria-controls="home" aria-selected="true">评论设置</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" id="profile-tab" data-toggle="tab" href="#comment-list" role="tab" aria-controls="profile" aria-selected="false">评论列表</a>
+    </li>
+  </ul>
+  <div class="tab-content" id="myTabContent">
+    <div class="tab-pane fade" id="comment-set" role="tabpanel" aria-labelledby="profile-tab">
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>编号</th>
+            <th>文章标题</th>
+            <th>所属栏目</th>
+            <th>作者</th>
+            <th>发布时间</th>
+            <th>阅读次数</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="setTable">
+
+        </tbody>
+      </table>
+      <!-- 分页 -->
+      <div id="comment-setPage" class="demo"></div>
+    </div>
+    <div class="tab-pane fade" id="comment-list" role="tabpanel" aria-labelledby="contact-tab">
+      <div style="margin: 10px 10px;">
+        <button class="btn btn-danger" id="batchBtn">批量删除</button>
+      </div>
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>编号</th>
+            <th>评论内容</th>
+            <th>发布评论人</th>
+            <th>评论发布时间</th>
+            <th>文章标题</th>
+            <th>所属栏目</th>
+            <th>文章发布时间</th>
+            <th>阅读次数</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="listTable">
+
+        </tbody>
+      </table>
+      <div id="comment-listPage" class="demo"></div>
+    </div>
+  </div>
+
+
+</div>
+
+<script>
+
+  // 删除评论
+  $('.table').on('click','.comment-delete',function(){
+    var deleteId = $(this).closest('tr').find('[type=checkbox]').val();
+    var result = confirm('是否确认删除？？');
+    if(result){
+      myAjax('/manager/comment/deleteCommentById','get',{id:deleteId},function(res){
+        if(res.status==200){
+          alert('删除成功');
+          findAllCommentList(0);
+        }else{
+          alert('删除失败');
+        }
+      })
+    }
+  })
+  // 批量删除评论
+  $('#batchBtn').click(function(){
+    // 获取选中项的id
+    var arr = [];
+    Array.from($(':checkbox:checked')).forEach(function(item){
+      arr.push($(item).val());
+    })
+    // console.log('arr---',arr);
+    if(arr.length>0){
+      var result = confirm('是否删除所有选中项???');
+      if(result){
+        myAjax('/manager/comment/batchDeleteComment','post',{ids:arr.toString()},function(res){
+          if(res.status==200){
+            alert('删除成功！！！');
+            findAllCommentList(0);
+          }else{
+            alert('删除失败');
+          }
+        })
+      }else{
+        $(':checkbox:checked').prop('checked',false);
+      }
+    }else{
+      alert('未选择');
+    }
+
+  })
+
+  // 审核部分
+  $('.table').on('click','.passBtn',function(){
+    // 获取当前点击的文章id
+    var commentId = $(this).closest('tr').find('[type=checkbox]').val();
+    console.log(commentId);
+    myAjax('/manager/comment/checkComment','get',{
+      id:commentId,
+      status:'审核通过'
+    },function(res){
+      if(res.status==200){
+        alert(res.message);
+        // 页面数据更新
+        findAllCommentSet(0);
+      }else{
+        alert('审核失败');
+      }
+    })
+
+  })
+
+  // 评论设置
+  findAllCommentSet(0);
+  function findAllCommentSet(page){
+      myAjax('/manager/comment/findComment','get',{page:page,pageSize:10},function(res){
+          $('#setTable').empty();
+
+          // 如何将栏目id替换为当前id所对应的栏目名称？
+          var newData = [];
+          res.data.list.forEach(function(item){
+              if(item.article){
+                  // 查询所有栏目
+                  myAjax('/manager/category/findAllCategory','get',{},function(res){
+                      item.categoryName = res.data.filter(function(it){
+                          return it.id == item.article.categoryId
+                      })[0].name
+                  })
+              }
+              newData.push(item);
+          })
+          // newData为新增了栏目名称的新数据
+          newData.forEach(function(item){
+              // 由于categoryName在新增到新数组中需要时间，所以需要使用定时器
+              setTimeout(function(){
+                  var newTr = $(`
+                      <tr>
+                          <td><input type="checkbox" value="`+item.id+`"></td>
+                          <td>`+(item.article ? item.article.title : '--')+`</td>
+                          <td>`+(item.article ? item.categoryName : '--')+`</td>
+                          <td>`+(item.customer ? item.customer.nickname : '--')+`</td>
+                          <td>`+(item.article ? item.article.publishtime : '--')+`</td>
+                          <td>`+(item.article ? item.article.readtimes : '--')+`</td>
+                          <td>
+                              <div class="changeSt atus">`+(item.status == '审核通过' ? item.status : '<button class="btn btn-info passBtn">审核</button>')+`</div>
+                          </td>
+                      </tr>
+                  `)
+                  $('#setTable').append(newTr)
+              },200)
+          })
+          // 分页数据
+          $("#comment-setPage").sPage({
+              page:res.data.page+1,
+              pageSize:res.data.pageSize,
+              total:res.data.total,
+              prevPage:"←",
+              nextPage:"→",
+              backFun:function(page){
+                  // page为当前点击的页码
+                  findAllCommentSet(page-1)
+              }
+          });
+      })
+  }
+
+  // 评论列表（查看评论内容，并决定是否对评论进行删除）
+  findAllCommentList(0);
+  function findAllCommentList(page){
+      myAjax('/manager/comment/findComment','get',{page:page,pageSize:10},function(res){
+          $('#listTable').empty();
+
+          // 如何将栏目id替换为当前id所对应的栏目名称？
+          var newData = [];
+          res.data.list.forEach(function(item){
+              if(item.article){
+                  // 查询所有栏目
+                  myAjax('/manager/category/findAllCategory','get',{},function(res){
+                      item.categoryName = res.data.filter(function(it){
+                          return it.id == item.article.categoryId
+                      })[0].name
+                  })
+              }
+              newData.push(item);
+          })
+          // newData为新增了栏目名称的新数据
+          newData.forEach(function(item){
+              // 由于categoryName在新增到新数组中需要时间，所以需要使用定时器
+              setTimeout(function(){
+                  var newTr = $(`
+                      <tr>
+                          <td><input type="checkbox" value="`+item.id+`"></td>
+                          <td>`+(item.content ? item.content : '--')+`</td>
+                          <td>`+(item.customer ? item.customer.nickname : '--')+`</td>
+                          <td>`+(item.commenttime ? item.commenttime : '--')+`</td>
+                          <td>`+(item.article ? item.article.title : '--')+`</td>
+                          <td>`+(item.article ? item.categoryName : '--')+`</td>
+                          <td>`+(item.article ? item.article.publishtime : '--')+`</td>
+                          <td>`+(item.article ? item.article.readtimes : '--')+`</td>
+                          <td style="text-align:center;">
+                            <span><i class="iconfont icon-shanchu comment-delete" title="删除"></i></span>
+                          </td>
+                      </tr>
+                  `)
+                  $('#listTable').append(newTr)
+              },200)
+          })
+          // 分页数据
+          $("#comment-listPage").sPage({
+              page:res.data.page+1,
+              pageSize:res.data.pageSize,
+              total:res.data.total,
+              prevPage:"←",
+              nextPage:"→",
+              backFun:function(page){
+                  // page为当前点击的页码
+                  findAllCommentList(page-1)
+              }
+          });
+      })
+  }
+
+</script>
+
+<!-- <script>
+  // 所有栏目的id和name
+  var allCategoryData;
+
+  // 查询所有数据
+  findAllComment(0);
+  function findAllComment(page){
+    myAjax('/manager/comment/findComment','get',{page:page,pageSize:10},function(res){
+      $('#setTable').empty();
+
+      // console.log(res.data);
+      res.data.list.forEach(function(item){
+        var categoryName = '--';
+        if(item.article){
+          categoryName = allCategoryData.forEach(function(category){
+             if(category.id==item.article.categoryId){
+               return category.name;
+             }
+           })
+          console.log(categoryName);
+        }
+        var newTr = $(`
+          <tr>
+            <td><input type="checkbox" value="`+item.id+`"></td>
+            <td>`+(item.article?item.article.title:'--')+`</td>
+            <td>`+categoryName+`</td>
+            <td>`+(item.article?item.article.nickname:"--")+`</td>
+            <td>`+(item.article?item.article.publishtime:"--")+`</td>
+            <td>`+(item.article?item.article.readtimes:"--")+`</td>
+            <td>
+              
+            </td>
+          </tr>
+        `)
+        $('#setTable').append(newTr);
+        
+        // 数据分页
+        $("#commentPage").sPage({
+          page:res.data.page+1, //指定页
+          pageSize:res.data.pageSize, //每页数据个数
+          total:res.data.total,  //数据个数
+          prevPage:"←",
+          nextPage:"→",
+          backFun:function(page){
+            // page为当前页面点击的页码
+            findAllComment(page-1);
+          }
+        });
+      })
+      // 分页数据
+      
+    })
+  }
+
+  findAllCategory();
+  function findAllCategory(){
+    myAjax('/manager/category/findAllCategory','get',{},function(res){
+      allCategoryData = res.data;
+      console.log(allCategoryData);
+    })
+  }
+</script> -->
+
+

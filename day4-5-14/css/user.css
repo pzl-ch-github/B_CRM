@@ -1,0 +1,37 @@
+/* 清除样式 */
+.user #myTab li{ 
+  list-style: none;
+}
+.user #myTab a{
+  text-decoration: none;
+}
+/* 添加样式 */
+.user{
+  height: 100%;
+}
+.user #myTabContent{
+  height: 90%;
+  /* width: 85%; */
+  /* float: right; */
+  /* 页面撑开后 滚动条 */
+  overflow: auto;
+}
+
+.nav-item a{
+  font-size: 16px;
+}
+
+.list-group-item div{
+  display: inline-block;
+}
+#addUserBtn{
+  margin: 10px 0;
+}
+
+/* #myTabContent{
+  height: 100%;
+  width: 85%;
+  float: left;
+  overflow: auto;
+} */
+
